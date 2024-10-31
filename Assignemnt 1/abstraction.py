@@ -1,13 +1,22 @@
 import numpy as np
 import numpy.lib.stride_tricks as ns
-import imageio
+#import imageio -> this causes error
+import imageio.v2 as imageio
 import skimage.color as skc
 import skimage.filters as skf
-
+from numpy.lib.stride_tricks import sliding_window_view
 
 def edge_detection(im):
     '''Implement DoG smooth edge detection (Eq. 6)'''
-    return np.ones_like(im)
+
+    s_e = skf.gaussian(im, sigma_e)
+    s_f = skf.gaussian(im, sigma_e * np.sqrt(1.6))
+
+    dog = s_e - tau * s_f
+
+    result = np.where(dog > 0, 1, (1 + np.tanh(phi_e * dog)))
+
+    return result
 
 
 def luminance_quantization(im):
@@ -23,6 +32,8 @@ def bilateral_gaussian(im):
     Implement the bilateral Gaussian filter (Eq. 3).
     Apply it to the padded image.
     '''
+
+
     return im
 
 
@@ -37,7 +48,7 @@ def abstraction(im):
     luminance_quantized = luminance_quantization(filtered[:, :, 0])
 
     '''Get the final image by merging the channels properly'''
-    combined = filered  # Todo
+    combined = filtered  # Todo
     return skc.lab2rgb(combined)
 
 
