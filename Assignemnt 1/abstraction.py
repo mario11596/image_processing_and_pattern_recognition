@@ -1,9 +1,14 @@
 import numpy as np
 import numpy.lib.stride_tricks as ns
+
 #import imageio -> this causes error
 import imageio.v2 as imageio
+
 import skimage.color as skc
 import skimage.filters as skf
+
+
+#for testing
 from numpy.lib.stride_tricks import sliding_window_view
 
 def edge_detection(im):
@@ -14,9 +19,9 @@ def edge_detection(im):
 
     dog = s_e - tau * s_f
 
-    result = np.where(dog > 0, 1, (1 + np.tanh(phi_e * dog)))
+    dog_result = np.where(dog > 0, 1, (1 + np.tanh(phi_e * dog)))
 
-    return result
+    return dog_result
 
 
 def luminance_quantization(im):
@@ -32,6 +37,17 @@ def bilateral_gaussian(im):
     Implement the bilateral Gaussian filter (Eq. 3).
     Apply it to the padded image.
     '''
+
+    hight, width, channel = im.shape
+
+    win_size = 2 * r + 1
+    windows_neighborhoods_pixels = sliding_window_view(padded, (win_size, win_size, channel))
+
+    y, x = np.mgrid[-r:r, -r:r]
+    gaussian_spatial_weights = np.exp(-(x ** 2 + y ** 2) / (2 * sigma_s ** 2))
+
+
+
 
 
     return im
