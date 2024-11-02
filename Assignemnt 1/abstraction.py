@@ -8,9 +8,6 @@ import skimage.color as skc
 import skimage.filters as skf
 
 
-#for testing
-from numpy.lib.stride_tricks import sliding_window_view
-
 def edge_detection(im):
     '''Implement DoG smooth edge detection (Eq. 6)'''
 
@@ -26,7 +23,23 @@ def edge_detection(im):
 
 def luminance_quantization(im):
     '''Implement luminance quantization (Eq. 8)'''
-    return im
+    l_max = 100
+
+    delta_differ = l_max / n_bins
+
+    quantization_steps_tmp = []
+    for i in range(n_bins + 1):
+        quantization_steps_tmp.append(i * delta_differ)
+
+    quantization_steps = np.array(quantization_steps_tmp)
+
+    im_tmp_dim = im[:, :, np.newaxis]
+    quantization_steps_im_dim = quantization_steps[np.newaxis, np.newaxis, :]
+
+    quantization_min = quantization_steps[np.argmin((np.abs(im_tmp_dim - quantization_steps_im_dim)), axis=2)]
+    quantized_luminance_image = quantization_min + (delta_differ / 2) * np.tanh(phi_q * (im - quantization_min))
+
+    return quantized_luminance_image
 
 
 def bilateral_gaussian(im):
@@ -41,7 +54,7 @@ def bilateral_gaussian(im):
     hight, width, channel = im.shape
 
     win_size = 2 * r + 1
-    windows_neighborhoods_pixels = sliding_window_view(padded, (win_size, win_size, channel))
+    windows_neighborhoods_pixels = ns.sliding_window_view(padded, (win_size, win_size, channel))
 
     y, x = np.mgrid[-r:r, -r:r]
     gaussian_spatial_weights = np.exp(-(x ** 2 + y ** 2) / (2 * sigma_s ** 2))
