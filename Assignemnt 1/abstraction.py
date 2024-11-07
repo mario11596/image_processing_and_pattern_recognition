@@ -7,6 +7,8 @@ import imageio.v2 as imageio
 import skimage.color as skc
 import skimage.filters as skf
 
+import matplotlib.pyplot as plt
+
 
 def edge_detection(im):
     '''Implement DoG smooth edge detection (Eq. 6)'''
@@ -56,17 +58,13 @@ def bilateral_gaussian(im):
     win_shape = (win_size, win_size, 3)
     windows_neighborhoods_pixels = ns.sliding_window_view(padded, window_shape=win_shape)
 
-    y, x = np.mgrid[-r:r, -r:r]
+    y, x = np.mgrid[-r:r+1, -r:r+1]
     gaussian_spatial_weights = np.exp(-(x ** 2 + y ** 2) / (2 * sigma_s ** 2))
-    M, N, LABdim = im.shape
     # center of window = current pixel 
-    p = np.array([r + 1, r + 1])
     U = np.ones_like(im) 
     # cur_window = windows_neighborhoods_pixels[0][0][0]
     for x_coord in range(0, 400):
-        print(x_coord)
         for y_coord in range(0, 254): 
-            print(y_coord)
             cur_window = windows_neighborhoods_pixels[x_coord][y_coord][0]
             sum_top = [0,0,0]
             sum_bottom = 0
@@ -74,10 +72,9 @@ def bilateral_gaussian(im):
                 for j in range(0, 17):
                     if  (i == r + 1) and (j == r + 1):
                         continue    
-                    q = np.array([i, j])
-                    F_p = np.array(cur_window[p[0]][p[1]])
-                    F_q = np.array(cur_window[q[0]][q[1]])
-                    pixel_weights = np.exp(-((np.linalg.norm(p - q) / (2 * sigma_s ** 2)) - (np.linalg.norm(F_p - F_q) / (2 * sigma_r ** 2))))
+                    F_p = cur_window[r+1][r+1]
+                    F_q = cur_window[i][j]
+                    pixel_weights = (gaussian_spatial_weights[i][j]) * np.exp(-(np.linalg.norm(F_p - F_q) / (2 * sigma_r ** 2)))
                     sum_top += pixel_weights * F_q
                     sum_bottom += pixel_weights
             U[x_coord][y_coord] = sum_top / sum_bottom
@@ -88,7 +85,8 @@ def abstraction(im):
     filtered = skc.rgb2lab(im)
     for _ in range(n_e):
         filtered = bilateral_gaussian(filtered)
-    imageio.imsave('filtered.png', skc.lab2rgb(filtered[0]))
+    imgplot = plt.imshow(skc.lab2rgb(filtered))
+    plt.show()
     edges = edge_detection(filtered[:, :, 0])
 
     for _ in range(n_b - n_e):
@@ -117,5 +115,7 @@ if __name__ == '__main__':
 
     im = imageio.imread('./Assignemnt 1/girl.png') / 255.
     print(im[0][0])
+    plt.show()
+    
     abstracted = abstraction(im)
     # imageio.imsave('abstracted.png', np.clip(abstracted, 0, 1))
