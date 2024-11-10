@@ -72,10 +72,12 @@ def bilateral_gaussian(im):
     norm = x ** 2 + y ** 2
     spatial_weights = np.exp(-norm / (2 * sigma_s ** 2))
 
+    M, N, labdim = im.shape
+    # center of window = current pixel
     U = np.ones_like(im)
 
-    for x_coord in range(0, 400):
-        for y_coord in range(0, 254):
+    for x_coord in range(0, M):
+        for y_coord in range(0, N):
             cur_window = windows_neighborhoods_pixels[x_coord][y_coord][0]
 
             F_p = cur_window[r, r]
@@ -122,7 +124,7 @@ if __name__ == '__main__':
     n_e = 2
     n_b = 4
     # Bilateral Filter
-    sigma_r = 4.25  # "Range" sigma
+    sigma_r = 2  # "Range" sigma
     sigma_s = 3.5  # "Spatial" sigma
     # Edge Detection
     sigma_e = 1
