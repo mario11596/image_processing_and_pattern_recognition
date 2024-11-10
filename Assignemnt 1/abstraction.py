@@ -52,6 +52,7 @@ def luminance_quantization(im):
 
     return quantized_luminance_image
 
+
 def bilateral_gaussian(im):
     # Radius of the Gaussian filter
     r = int(2 * sigma_s) + 1
@@ -77,12 +78,11 @@ def bilateral_gaussian(im):
         for y_coord in range(0, 254):
             cur_window = windows_neighborhoods_pixels[x_coord][y_coord][0]
 
-            F_p = im[x_coord, y_coord]
+            F_p = cur_window[r, r]
             intensity_diff = np.linalg.norm(cur_window - F_p, axis=2, ord=2)
             intensity_weights = np.exp(-intensity_diff ** 2 / (2 * sigma_r ** 2))
 
             pixel_weights_all = spatial_weights * intensity_weights
-
             weighted_sum = np.sum(pixel_weights_all[:, :, None] * cur_window, axis=(0, 1))
             U[x_coord, y_coord] = weighted_sum / np.sum(pixel_weights_all)
     return U
@@ -110,8 +110,10 @@ def abstraction(im):
     luminance_quantized = luminance_quantization(filtered[:, :, 0])
 
     '''Get the final image by merging the channels properly'''
-    filtered[:, :, 0] = luminance_quantized * edges
-    combined = filtered  # Todo
+    combined = np.ones_like(filtered)
+    combined[:, :, 0] = luminance_quantized * edges
+    combined[:, :, 1] = filtered[:, :, 1]
+    combined[:, :, 2] = filtered[:, :, 2]
     return skc.lab2rgb(combined)
 
 
@@ -135,8 +137,3 @@ if __name__ == '__main__':
 
     abstracted = (abstracted * 255).astype(np.uint8)
     imageio.imsave('abstracted.png', abstracted)
-    #mse = np.mean((im - (abstracted / 255)) ** 2)
-    #print(mse)
-
-
-
