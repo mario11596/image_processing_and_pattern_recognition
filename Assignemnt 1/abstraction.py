@@ -44,7 +44,6 @@ def luminance_quantization(im):
         quantization_steps_tmp.append(i * delta_differ)
 
     quantization_steps = np.array(quantization_steps_tmp)
-
     im_tmp_dim = im[:, :, np.newaxis]
     quantization_estimation = quantization_steps[np.newaxis, np.newaxis, :]
 
@@ -61,31 +60,31 @@ def bilateral_gaussian(im):
     Implement the bilateral Gaussian filter (Eq. 3).
     Apply it to the padded image.
     '''
+
     print("Starting bilateral_gaussian()")
+
     win_size = 2 * r + 1
     win_shape = (win_size, win_size, 3)
-    windows_neighborhoods_pixels = ns.sliding_window_view(padded, window_shape=win_shape) #shape (400, 254, 1, 17, 17, 3)
+    windows_neighborhoods_pixels = ns.sliding_window_view(padded, window_shape=win_shape)
 
-    # equation 2)
     y, x = np.mgrid[-r:r+1, -r:r+1]
-    norm_inf = np.maximum(np.abs(x), np.abs(y))
-    spatial_weights = np.exp(-norm_inf**2 / (2 * sigma_s ** 2)) #shape (17, 17) (∥p − q∥_infitiny norm)
+    norm = x ** 2 + y ** 2
+    spatial_weights = np.exp(-norm / (2 * sigma_s ** 2))
 
-    # center of window = current pixel
     U = np.ones_like(im)
 
     for x_coord in range(0, 400):
         for y_coord in range(0, 254):
             cur_window = windows_neighborhoods_pixels[x_coord][y_coord][0]
 
-            F_p = cur_window[r, r]
-            intensity_diff = np.linalg.norm(F_p - cur_window, axis=2, ord=2)
-            intensity_weights = np.exp(-intensity_diff ** 2 / (2 * sigma_r ** 2))  # shape (17, 17) (∥F(p) − F(q)∥_2)
+            F_p = im[x_coord, y_coord]
+            intensity_diff = np.linalg.norm(cur_window - F_p, axis=2, ord=2)
+            intensity_weights = np.exp(-intensity_diff ** 2 / (2 * sigma_r ** 2))
 
-            pixel_weights = spatial_weights * intensity_weights
-            pixel_weights = spatial_weights * pixel_weights
-            weighted_sum = np.sum(pixel_weights[..., None] * cur_window, axis=(0, 1)) #check this part
-            U[x_coord, y_coord] = weighted_sum / np.sum(pixel_weights)
+            pixel_weights_all = spatial_weights * intensity_weights
+
+            weighted_sum = np.sum(pixel_weights_all[:, :, None] * cur_window, axis=(0, 1))
+            U[x_coord, y_coord] = weighted_sum / np.sum(pixel_weights_all)
     return U
 
 
@@ -110,16 +109,14 @@ def abstraction(im):
 
     luminance_quantized = luminance_quantization(filtered[:, :, 0])
 
-    imageio.imsave('luminance_quantized.png', np.uint8(luminance_quantized)) #this is too dark, has to be lighter
-
     '''Get the final image by merging the channels properly'''
 
-    combined = filtered  # Todo
+    filtered[:, :, 0] = luminance_quantized * edges
+    combined = filtered
     return skc.lab2rgb(combined)
 
 
 if __name__ == '__main__':
-    print(imageio.imread('reference.png'))
     # Algorithm
     n_e = 2
     n_b = 4
@@ -137,6 +134,10 @@ if __name__ == '__main__':
     im = imageio.imread('girl.png') / 255.
     abstracted = abstraction(im)
 
-    abstracted = (np.clip(abstracted, 0, 1) * 255).astype(np.uint8) # professor put the this part in teach center
+    abstracted = (abstracted * 255).astype(np.uint8)
     imageio.imsave('abstracted.png', abstracted)
+    #mse = np.mean((im - (abstracted / 255)) ** 2)
+    #print(mse)
+
+
 
