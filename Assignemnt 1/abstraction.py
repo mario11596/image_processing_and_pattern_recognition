@@ -110,10 +110,8 @@ def abstraction(im):
     luminance_quantized = luminance_quantization(filtered[:, :, 0])
 
     '''Get the final image by merging the channels properly'''
-    combined = np.ones_like(filtered)  # Todo
-    combined[:, :, 0] = luminance_quantized*edges
-    combined[:, :, 1] = filtered[:, :, 1]
-    combined[:, :, 2] = filtered[:, :, 2]
+    filtered[:, :, 0] = luminance_quantized * edges
+    combined = filtered  # Todo
     return skc.lab2rgb(combined)
 
 
@@ -132,7 +130,7 @@ if __name__ == '__main__':
     n_bins = 10
     phi_q = 0.7
 
-    im = imageio.imread('Assignemnt 1/girl.png') / 255.
+    im = imageio.imread('girl.png') / 255.
     abstracted = abstraction(im)
 
     abstracted = (abstracted * 255).astype(np.uint8)
