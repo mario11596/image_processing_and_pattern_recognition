@@ -1,6 +1,6 @@
 import numpy as np
 import numpy.lib.stride_tricks as ns
-import imageio as imageio
+import imageio
 import skimage.color as skc
 import skimage.filters as skf
 
@@ -14,21 +14,21 @@ def edge_detection(im):
 
     s_f_corr = sigma_e * np.sqrt(1.6)
     s_f = skf.gaussian(image=im, sigma=s_f_corr)
-    s_f_tau = tau * s_f
 
+    s_f_tau = tau * s_f
     dog = s_e - s_f_tau
 
-    dog_result = np.zeros_like(dog)
+    dog_edge_detection = np.zeros_like(dog)
     dim1, dim2 = dog.shape[0], dog.shape[1]
 
     for i in range(dim1):
         for j in range(dim2):
             if dog[i, j] > 0:
-                dog_result[i, j] = 1
+                dog_edge_detection[i, j] = 1
             else:
-                dog_result[i, j] = 1 + np.tanh(phi_e * dog[i, j])
+                dog_edge_detection[i, j] = 1 + np.tanh(phi_e * dog[i, j])
 
-    return dog_result
+    return dog_edge_detection
 
 
 def luminance_quantization(im):
@@ -40,14 +40,14 @@ def luminance_quantization(im):
     delta_differ = l_max / n_bins
 
     quantization_steps_tmp = []
-    for i in range(n_bins+1):
+    for i in range(n_bins):
         quantization_steps_tmp.append(i * delta_differ)
 
     quantization_steps = np.array(quantization_steps_tmp)
     im_tmp_dim = im[:, :, np.newaxis]
     quantization_estimation = quantization_steps[np.newaxis, np.newaxis, :]
 
-    quantization_min = quantization_steps[np.argmin((np.abs(im_tmp_dim - quantization_estimation)), axis=2)]
+    quantization_min = quantization_steps[np.argmin(np.abs(im_tmp_dim - quantization_estimation), axis=2)]
     quantized_luminance_image = quantization_min + (delta_differ / 2) * np.tanh(phi_q * (im - quantization_min))
 
     return quantized_luminance_image
@@ -61,7 +61,6 @@ def bilateral_gaussian(im):
     Implement the bilateral Gaussian filter (Eq. 3).
     Apply it to the padded image.
     '''
-
     print("Starting bilateral_gaussian()")
 
     win_size = 2 * r + 1
@@ -70,10 +69,9 @@ def bilateral_gaussian(im):
 
     y, x = np.mgrid[-r:r+1, -r:r+1]
     norm = x ** 2 + y ** 2
-    spatial_weights = np.exp(-norm / (2 * sigma_s ** 2))
+    spatial_weights_gauss = np.exp(-norm / (2 * sigma_s ** 2))
 
     M, N, labdim = im.shape
-    # center of window = current pixel
     U = np.ones_like(im)
 
     for x_coord in range(0, M):
@@ -82,10 +80,10 @@ def bilateral_gaussian(im):
 
             F_p = cur_window[r, r]
             intensity_diff = np.linalg.norm(cur_window - F_p, axis=2, ord=2)
-            intensity_weights = np.exp(-intensity_diff ** 2 / (2 * sigma_r ** 2))
+            intensity_weights_gauss = np.exp(-intensity_diff ** 2 / (2 * sigma_r ** 2))
 
-            pixel_weights_all = spatial_weights * intensity_weights
-            weighted_sum = np.sum(pixel_weights_all[:, :, None] * cur_window, axis=(0, 1))
+            pixel_weights_all = spatial_weights_gauss * intensity_weights_gauss
+            weighted_sum = np.sum(pixel_weights_all[..., None] * cur_window, axis=(0, 1))
             U[x_coord, y_coord] = weighted_sum / np.sum(pixel_weights_all)
     return U
 
@@ -94,21 +92,10 @@ def abstraction(im):
     filtered = skc.rgb2lab(im)
     for _ in range(n_e):
         filtered = bilateral_gaussian(filtered)
-
-    filtered_bilateral = skc.lab2rgb(filtered)
-    imageio.imsave('bilateral.png', (filtered_bilateral * 255).astype(np.uint8))
-
     edges = edge_detection(filtered[:, :, 0])
-
-    filtered_edge = edges
-    imageio.imsave('edge.png', (filtered_edge * 255).astype(np.uint8))
 
     for _ in range(n_b - n_e):
         filtered = bilateral_gaussian(filtered)
-
-    filtered_bilateral_second = skc.lab2rgb(filtered)
-    imageio.imsave('bilateral_second.png', (filtered_bilateral_second * 255).astype(np.uint8))
-
     luminance_quantized = luminance_quantization(filtered[:, :, 0])
 
     '''Get the final image by merging the channels properly'''
@@ -124,8 +111,8 @@ if __name__ == '__main__':
     n_e = 2
     n_b = 4
     # Bilateral Filter
-    sigma_r = 2  # "Range" sigma
-    sigma_s = 3.5  # "Spatial" sigma
+    sigma_r = 4.25  # "Range" sigma
+    sigma_s = 6  # "Spatial" sigma
     # Edge Detection
     sigma_e = 1
     tau = 0.98
@@ -136,6 +123,5 @@ if __name__ == '__main__':
 
     im = imageio.imread('girl.png') / 255.
     abstracted = abstraction(im)
-
     abstracted = (abstracted * 255).astype(np.uint8)
     imageio.imsave('abstracted.png', abstracted)
