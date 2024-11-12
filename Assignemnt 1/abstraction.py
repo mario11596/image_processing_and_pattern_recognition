@@ -112,7 +112,7 @@ if __name__ == '__main__':
     n_b = 4
     # Bilateral Filter
     sigma_r = 4.25  # "Range" sigma
-    sigma_s = 6  # "Spatial" sigma
+    sigma_s = 3.5  # "Spatial" sigma
     # Edge Detection
     sigma_e = 1
     tau = 0.98
@@ -121,7 +121,7 @@ if __name__ == '__main__':
     n_bins = 10
     phi_q = 0.7
 
-    im = imageio.imread('girl.png') / 255.
+    im = imageio.imread('./girl.png') / 255.
     abstracted = abstraction(im)
     abstracted = (abstracted * 255).astype(np.uint8)
     imageio.imsave('abstracted.png', abstracted)
