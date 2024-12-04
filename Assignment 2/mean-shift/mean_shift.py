@@ -25,18 +25,25 @@ for zeta in [1, 4]:
         indexing='xy'
     )
     features = th.cat((im, y[..., None], x[..., None]), dim=-1).reshape(-1, 5)
-    shifted = features.clone()
     for h in [0.1, 0.3]:
+        # The `shifted` array contains the iteration variables
+        shifted = features.clone()
+        # The `to_do` array contains the indices of the pixels for which the
+        # stopping criterion is _not_ yet met.
         to_do = th.arange(M ** 2, device=device)
         while len(to_do):
-            chunk = shifted[to_do[:simul]]
-            # TODO: Implement (16)
-            new = chunk.clone()
-            shifted[to_do[:simul]] = new
+            # We walk through the points in `shifted` in chunks of `simul`
+            # points. Note that for each point, you should compute the distance
+            # to _all_ other points, not only the points in the current chunk.
+            chunk = shifted[to_do[:simul]].clone()
+            # TODO: Mean shift iterations (15), writing back the result into shifted.
+            shifted[to_do[:simul]] = chunk.clone()
             # TODO: Termination criterion (17). cond should be True for samples
             # that need updating. Note that chunk contains the 'old' values.
-            cond = th.ones(new.shape[0], device=new.device)
-
+            cond = chunk.new_ones(chunk.shape[0]).to(th.bool)
+            # We only keep the points for which the stopping criterion is not met.
+            # `cond` should be a boolean array of length `simul` that indicates
+            # which points should be kept.
             to_do = to_do[th.cat((
                 cond, cond.new_ones(to_do.shape[0] - cond.shape[0])
             ))]
