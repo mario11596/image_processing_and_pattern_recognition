@@ -5,7 +5,6 @@ import numpy as np
 
 # It is highly recommended to set up pytorch to take advantage of CUDA GPUs!
 device = th.device('cuda') if th.cuda.is_available() else th.device('cpu')
-
 # Choose the size of the image here. Prototyping is easier with 128.
 M = 128
 # The reference implementation works in chunks. Set this as high as possible
@@ -39,23 +38,22 @@ for zeta in [1, 4]:
             chunk = shifted[to_do[:simul]].clone()
             # TODO: Mean shift iterations (15), writing back the result into shifted.
 
-            distances = th.pow((th.cdist(chunk, shifted, p=2)), 2) / pow(h, 2)
+            distances = th.cdist(chunk, features, p=2)
 
-            mask = distances <= 1
-            weights = (1 - distances) * mask.float()
+            i_x_j = th.where(distances <= h, th.ones_like(distances), th.zeros_like(distances))
 
-            numerator = th.matmul(weights, shifted)
-            denominator = weights.sum(dim=1, keepdim=True)
-            denominator = th.clamp(denominator, min=1e-10)
-            new_chunk = numerator / denominator
+            num = i_x_j @ features
+            den = i_x_j.sum(dim=1).unsqueeze(1)
+            result = num / den
 
-            shifted[to_do[:simul]] = new_chunk.clone()
+            shifted[to_do[:simul]] = result
+
             # TODO: Termination criterion (17). cond should be True for samples
             # that need updating. Note that chunk contains the 'old' values.
 
-            cond = ((new_chunk - chunk) ** 2).sum(dim=1) >= 1e-6
+            cond = th.sum((chunk - shifted[to_do[:simul]])**2, dim=1) >= 1e-6
             cond = cond.to(th.bool)
-            #cond = chunk.new_ones(chunk.shape[0]).to(th.bool)
+
             # We only keep the points for which the stopping criterion is not met.
             # `cond` should be a boolean array of length `simul` that indicates
             # which points should be kept.
@@ -63,8 +61,8 @@ for zeta in [1, 4]:
                 cond, cond.new_ones(to_do.shape[0] - cond.shape[0])
             ))]
             artist.set_data(shifted.view(M, M, 5).cpu()[:, :, :3])
-            plt.pause(0.1)  # can we increase this (its block the whole laptop)
+            plt.pause(0.1)
         # Reference images were saved using this code.
-        output_image = (shifted.view(M, M, 5)[..., :3].clone().cpu().numpy() * 255).astype(np.uint8) # can we add this, problem with saving on Windows
-        imageio.imsave(f'./reference/{M}/zeta_{zeta:1.1f}_h_{h:.2f}_mario4.png', output_image)
+        output_image = (shifted.view(M, M, 5)[..., :3].clone().cpu().numpy() * 255).astype(np.uint8)
+        imageio.imsave(f'./reference/{M}/zeta_{zeta:1.1f}_h_{h:.2f}_mario.png', output_image)
         print('Done one verison')
