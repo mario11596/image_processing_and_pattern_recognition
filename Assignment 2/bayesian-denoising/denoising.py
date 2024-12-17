@@ -3,28 +3,53 @@ import utils
 
 
 def expectation_maximization(
-    X: np.ndarray,
-    K: int,
-    max_iter: int = 50,
-    plot: bool = False,
-    show_each: int = 5,
-    epsilon: float = 1e-6,
+        X: np.ndarray,
+        K: int,
+        max_iter: int = 50,
+        plot: bool = False,
+        show_each: int = 10,
+        epsilon: float = 1e-6,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    # Number of data points, features
+    # Number of data points (N) and features (m)
     N, m = X.shape
+
     # Init: Uniform weights, first K points as means, identity covariances
-    alphas = np.full((K,), 1. / K)
-    mus = X[:K]
-    sigmas = np.tile(np.eye(m)[None], (K, 1, 1))
+    alphas = np.full((K,), 1.0 / K)
+    mus = X[:K]  
+    sigmas = np.tile(np.eye(m)[None], (K, 1, 1)) 
 
     for it in range(max_iter):
         print(it)
         # TODO: Implement (9) - (11)
-        alphas = alphas
-        mus = mus
-        sigmas = sigmas
+        log_resp = np.zeros((N, K)) 
 
-        if it % show_each == 0 and plot:
+        for k in range(K):
+            L_k = np.linalg.cholesky(sigmas[k]) 
+            L_inv = np.linalg.inv(L_k)  
+            sign, log_det_L_k = np.linalg.slogdet(L_k) 
+
+            x_diff = X - mus[k]  
+            mahalanobis = np.sum((L_inv @ x_diff.T) ** 2, axis=0)
+
+            log_resp[:, k]  = -0.5 * (mahalanobis + m * np.log(2 * np.pi) + log_det_L_k) + np.log(alphas[k])
+
+        log_sum_exp = np.max(log_resp, axis=1, keepdims=True) + np.log(
+            np.sum(np.exp(log_resp - np.max(log_resp, axis=1, keepdims=True)), axis=1, keepdims=True)
+        )
+        gammas = np.exp(log_resp - log_sum_exp)  
+        
+        sum_of_gammas = np.sum(gammas, axis=0) 
+        alphas = sum_of_gammas / N  
+        mus = (gammas.T @ X) / sum_of_gammas[:, None]  
+
+        sigmas = np.zeros((K, m, m))  
+        for k in range(K):
+            x_diff = X - mus[k]
+            weighted_diff = gammas[:, k, None] * x_diff  
+            sigmas[k] = (weighted_diff.T @ x_diff) / sum_of_gammas[k] + epsilon * np.eye(m)  
+
+        if plot and it % show_each == 0:
+            print(f"Iteration {it}")
             utils.plot_gmm(X, alphas, mus, sigmas)
 
     return alphas, mus, sigmas
@@ -55,15 +80,35 @@ def denoise(
     E = np.eye(m) - np.full((m, m), 1 / m)
 
     # TODO: Precompute A, b (26)
-
+    A = np.zeros((K, m, m))
+    b = np.zeros((K, m))
+    for k in range(K):
+        A[k] = np.linalg.inv(lamda * np.eye(m) + E.T @ precs[k] @ E)
+        b[k] = precs[k] @ (E @ mus[k])
+    
     for it in range(max_iter):
         # TODO: Implement Line 3, Line 4 of Algorithm 1
-        x_tilde = x_est
+        log_resp = np.zeros((x_est.shape[0], K)) 
+        for k in range(K):
+            L_k = np.linalg.cholesky(sigmas[k]) 
+            L_inv = np.linalg.inv(L_k)  
+            sign, log_det_L_k = np.linalg.slogdet(L_k) 
+
+            proj = E @ x_est.T
+            cur_mu = mus[k]
+            x_diff = proj - cur_mu[:, np.newaxis]
+            mahalanobis = np.sum((L_inv @ x_diff) ** 2, axis=0)
+
+            log_resp[:, k]  = -0.5 * (mahalanobis + m * np.log(2 * np.pi) + log_det_L_k) + np.log(alphas[k])
+        k_max = np.argmax(log_resp, axis=1)
+        inner = (lamda * y) + b[k_max]
+        x_tilde = np.einsum('ijk,ik->ij', A[k_max], inner)
         x_est = alpha * x_est + (1 - alpha) * x_tilde
 
         if not test:
             u = utils.patches_to_image(x_est, x.shape, w)
-            print(f"it: {it+1:03d}, psnr(u, y)={utils.psnr(u, x):.2f}")
+            if (it == max_iter - 1):
+                print(f"it: {it+1:03d}, psnr(u, y)={utils.psnr(u, x):.2f}")
 
     return utils.patches_to_image(x_est, x.shape, w)
 
@@ -83,19 +128,20 @@ def train(use_toy_data: bool = True, K: int = 2, w: int = 5):
 
 
 if __name__ == "__main__":
-    do_training = True
+    do_training = False
     # Use the toy data to debug your EM implementation
-    use_toy_data = True
+    use_toy_data = False
     # Parameters for the GMM: Components and window size, m = w ** 2
     # Use K = 2 for toy/debug model
-    K = 2
+    K = 10
     w = 5
     if do_training:
         train(use_toy_data, K, w)
     else:
         for i in range(1, 6):
-            denoise(i, K, w, test=False)
+            denoised_img = denoise(i, K, w, test=False)
+            utils.imsave(f'./validation/denoised_img{i}_out.png', denoised_img)
 
     # If you want to participate in the challenge, you can benchmark your model
     # Remember to upload the images in the submission.
-    benchmark(K, w)
+    # benchmark(K, w)
