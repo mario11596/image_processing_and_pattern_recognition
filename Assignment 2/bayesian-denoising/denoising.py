@@ -90,14 +90,15 @@ def denoise(
         # TODO: Implement Line 3, Line 4 of Algorithm 1
         log_resp = np.zeros((x_est.shape[0], K)) 
         for k in range(K):
-            L_k = np.linalg.cholesky(sigmas[k]) 
-            L_inv = np.linalg.inv(L_k)  
-            sign, log_det_L_k = np.linalg.slogdet(L_k) 
+            # L_k = np.linalg.cholesky(sigmas[k]) 
+            # L_inv = np.linalg.inv(L_k)  
+            
+            sign, log_det_L_k = np.linalg.slogdet(precs_chol[k]) 
 
             proj = E @ x_est.T
             cur_mu = mus[k]
             x_diff = proj - cur_mu[:, np.newaxis]
-            mahalanobis = np.sum((L_inv @ x_diff) ** 2, axis=0)
+            mahalanobis = np.sum((precs_chol[k] @ x_diff) ** 2, axis=0)
 
             log_resp[:, k]  = -0.5 * (mahalanobis + m * np.log(2 * np.pi) + log_det_L_k) + np.log(alphas[k])
         k_max = np.argmax(log_resp, axis=1)
@@ -111,6 +112,7 @@ def denoise(
                 print(f"it: {it+1:03d}, psnr(u, y)={utils.psnr(u, x):.2f}")
 
     return utils.patches_to_image(x_est, x.shape, w)
+
 
 
 def benchmark(K: int = 10, w: int = 5):
