@@ -1,6 +1,10 @@
 import numpy as np
 import utils
 
+REPORT = True
+
+if REPORT:
+    import os
 
 def expectation_maximization(
         X: np.ndarray,
@@ -14,41 +18,38 @@ def expectation_maximization(
     N, m = X.shape
 
     # Init: Uniform weights, first K points as means, identity covariances
-    alphas = np.full((K,), 1.0 / K)
-    mus = X[:K]
+    alphas = np.full((K,), 1.0 / K)  
+    mus = X[:K]  
     sigmas = np.tile(np.eye(m)[None], (K, 1, 1))
-
+    m_times_log2pi =  m * np.log(2 * np.pi)
     for it in range(max_iter):
-        print(it)
-        # TODO: Implement (9) - (11)
-        log_resp = np.zeros((N, K))
+        print(f"Iteration {it}")
 
-        # Step E
+        log_resp = np.zeros((N, K))  
+
         for k in range(K):
-            L_k = np.linalg.cholesky(sigmas[k])
-            L_inv = np.linalg.inv(L_k)
-            sign, log_det_L_k = np.linalg.slogdet(L_k)
+            L_k = np.linalg.cholesky(np.linalg.inv(sigmas[k])) 
+            mahalanobis = np.sum((L_k.T @ (X - mus[k]).T) ** 2, axis=0)
 
-            difference = X - mus[k]
-            mahalanobis = np.sum((L_inv @ difference.T) ** 2, axis=0)
-
-            log_resp[:, k] = -0.5 * (mahalanobis + m * np.log(2 * np.pi) + log_det_L_k) + np.log(alphas[k])
+            sign, log_det_L_k = np.linalg.slogdet(L_k) 
+            log_resp[:, k] = -0.5 * (mahalanobis + m_times_log2pi) + log_det_L_k + np.log(alphas[k])
 
         log_sum_exp = np.max(log_resp, axis=1, keepdims=True) + np.log(
             np.sum(np.exp(log_resp - np.max(log_resp, axis=1, keepdims=True)), axis=1, keepdims=True)
         )
-        gammas = np.exp(log_resp - log_sum_exp)
+        gammas = np.exp(log_resp - log_sum_exp)  
 
-        sum_of_gammas = np.sum(gammas, axis=0)
-        alphas = sum_of_gammas / N
-        mus = (gammas.T @ X) / sum_of_gammas[:, None]
+        sum_of_gammas = np.sum(gammas, axis=0)  
+        alphas = sum_of_gammas / N  
 
-        # Stem M
-        sigmas = np.zeros((K, m, m))
+        mus = (gammas.T @ X) / sum_of_gammas[:, None] 
+
+        sigmas = np.zeros((K, m, m)) 
         for k in range(K):
-            difference = X - mus[k]
-            weighted_diff = gammas[:, k, None] * difference
-            sigmas[k] = (weighted_diff.T @ difference) / sum_of_gammas[k] + epsilon * np.eye(m)
+            diff = X - mus[k] 
+            weighted_diff = gammas[:, k][:, None] * diff  
+            sigmas[k] = (weighted_diff.T @ diff) / sum_of_gammas[k]  
+            sigmas[k] += epsilon * np.eye(m) 
 
         if plot and it % show_each == 0:
             print(f"Iteration {it}")
@@ -88,23 +89,21 @@ def denoise(
         A[k] = np.linalg.inv(lamda * np.eye(m) + E.T @ precs[k] @ E)
         b[k] = precs[k] @ (E @ mus[k])
     
+    # precompute constant term m_times_log2pi and log dets of cholesky decomposition of sigmas
+    m_times_log2pi = m * np.log(2 * np.pi)
+    log_det_L_ks = [np.linalg.slogdet(L_k) for L_k in precs_chol]
     for it in range(max_iter):
         # TODO: Implement Line 3, Line 4 of Algorithm 1
 
-        # Code line 3
         log_resp = np.zeros((x_est.shape[0], K))
         for k in range(K):
-            difference_mus = (E @ x_est.T) - mus[k][:, np.newaxis]
-            mahalanobis_distance = np.sum((precs[k] @ difference_mus) * difference_mus, axis=0)
-            log_det = np.linalg.slogdet(sigmas[k])[1]
-            log_resp[:, k] = -0.5 * (mahalanobis_distance + log_det + m * np.log(2 * np.pi)) + np.log(alphas[k])
+            mahalanobis_distance = np.sum((precs_chol[k].T @ ((E @ x_est.T) - mus[k][:, np.newaxis])) ** 2, axis=0)
+            log_det_L_k = log_det_L_ks[k][1]
+            log_resp[:, k] = -0.5 * (mahalanobis_distance + m_times_log2pi) + log_det_L_k + np.log(alphas[k])
 
         k_max = np.argmax(log_resp, axis=1)
 
-        # Code line 4
-        tmp = (lamda * y) + b[k_max]
-        x_tilde = np.einsum('ijk,ik->ij', A[k_max], tmp)
-
+        x_tilde = np.einsum('ijk,ik->ij', A[k_max], (lamda * y) + b[k_max])
         x_est = alpha * x_est + (1 - alpha) * x_tilde
 
         if not test:
@@ -141,8 +140,12 @@ if __name__ == "__main__":
         train(use_toy_data, K, w)
     else:
         for i in range(1, 6):
-            denoised_img = denoise(i, K, w, test=False)
-            utils.imsave(f'./validation/denoised_img{i}_out.png', denoised_img)
+            denoised_img = denoise(i, K, w, test=False, sigma=0.05)
+            if REPORT:
+                out_path = f'./output/output_K_{K}_w_0{w}/'
+                if not os.path.exists(out_path):
+                    os.makedirs(out_path)
+                utils.imsave(out_path + f'denoised_img{i}_out.png', denoised_img)
 
     # If you want to participate in the challenge, you can benchmark your model
     # Remember to upload the images in the submission.
