@@ -69,4 +69,4 @@ for zeta in [1, 4]:
             plt.pause(0.1)
         # Reference images were saved using this code.
         output_image = (shifted.view(M, M, 5)[..., :3].clone().cpu().numpy() * 255).clip(0, 255).astype('uint8')
-        imageio.imsave(f'./reference/{M}/zeta_{zeta:1.1f}_hh_{h:.2f}.png', output_image)
+        imageio.imsave(f'./reference/{M}/zeta_{zeta:1.1f}_h_{h:.2f}.png', output_image)
