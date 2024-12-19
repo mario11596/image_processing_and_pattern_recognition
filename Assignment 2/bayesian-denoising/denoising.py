@@ -15,16 +15,17 @@ def expectation_maximization(
     show_each: int = 10,
     epsilon: float = 1e-6,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    # Number of data points (N) and features (m)
+    # Number of data points, features
     N, m = X.shape
 
     # Init: Uniform weights, first K points as means, identity covariances
-    alphas = np.full((K,), 1.0 / K)
+    alphas = np.full((K,), 1. / K)
     mus = X[:K]
     sigmas = np.tile(np.eye(m)[None], (K, 1, 1))
     m_times_log2pi = m * np.log(2 * np.pi)
 
     for it in range(max_iter):
+        # TODO: Implement (9) - (11)
         log_resp = np.zeros((N, K))
 
         # E-step
@@ -146,7 +147,7 @@ def train(use_toy_data: bool = True, K: int = 2, w: int = 5):
 
 
 if __name__ == "__main__":
-    do_training = False
+    do_training = True
     # Use the toy data to debug your EM implementation
     use_toy_data = False
     # Parameters for the GMM: Components and window size, m = w ** 2
