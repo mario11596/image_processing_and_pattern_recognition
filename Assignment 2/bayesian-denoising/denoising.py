@@ -23,9 +23,11 @@ def expectation_maximization(
     mus = X[:K]
     sigmas = np.tile(np.eye(m)[None], (K, 1, 1))
     m_times_log2pi = m * np.log(2 * np.pi)
+
     for it in range(max_iter):
         log_resp = np.zeros((N, K))
 
+        # E-step
         for k in range(K):
             L_k = np.linalg.cholesky(np.linalg.inv(sigmas[k]))
             mahalanobis = np.sum((L_k.T @ (X - mus[k]).T) ** 2, axis=0)
@@ -49,6 +51,7 @@ def expectation_maximization(
 
         mus = (gammas.T @ X) / sum_of_gammas[:, None]
 
+        # M-step
         sigmas = np.zeros((K, m, m))
         for k in range(K):
             diff = X - mus[k]
@@ -97,8 +100,11 @@ def denoise(
     # precompute constant term m_times_log2pi and log dets of cholesky decomposition of sigmas
     m_times_log2pi = m * np.log(2 * np.pi)
     log_det_L_ks = [np.linalg.slogdet(L_k) for L_k in precs_chol]
+
     for it in range(max_iter):
         # TODO: Implement Line 3, Line 4 of Algorithm 1
+
+        # Line 3
         log_resp = np.zeros((x_est.shape[0], K))
         for k in range(K):
             mahalanobis_distance = np.sum(
@@ -113,6 +119,7 @@ def denoise(
 
         k_max = np.argmax(log_resp, axis=1)
 
+        # Line 4
         x_tilde = np.einsum("ijk,ik->ij", A[k_max], (lamda * y) + b[k_max])
         x_est = alpha * x_est + (1 - alpha) * x_tilde
 
@@ -150,7 +157,7 @@ if __name__ == "__main__":
         train(use_toy_data, K, w)
     else:
         for i in range(1, 6):
-            denoised_img = denoise(i, K, w, test=False, sigma=0.05)
+            denoised_img = denoise(i, K, w, test=False)
             if REPORT:
                 out_path = f"./output/output_K_{K}_w_0{w}/"
                 if not os.path.exists(out_path):
