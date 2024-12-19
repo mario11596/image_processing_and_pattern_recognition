@@ -5,15 +5,15 @@ import torch as th
 # It is highly recommended to set up pytorch to take advantage of CUDA GPUs!
 device = th.device('cuda') if th.cuda.is_available() else th.device('cpu')
 # Choose the size of the image here. Prototyping is easier with 128.
-M = 256
+M = 128
 # The reference implementation works in chunks. Set this as high as possible
 # while fitting the intermediary calculations in memory.
 
 # We used this setup for image 128
-#simul = M ** 2 // 2
+simul = M ** 2 // 2
 
 # We used this setup for image 256
-simul = M ** 2 // 16
+#simul = M ** 2 // 16
 im = th.from_numpy(imageio.imread(f'./{M}.png') / 255.).to(device)
 
 # Visualization
@@ -22,7 +22,7 @@ ax[0].imshow(im.cpu().numpy())
 artist = ax[1].imshow(im.cpu().numpy())
 
 # For task 2 we used zeta 6 and 0.4 and 0.5
-for zeta in [0.4]:
+for zeta in [1, 4]:
     y, x = th.meshgrid(
         th.linspace(-zeta, zeta, M, device=device),
         th.linspace(-zeta, zeta, M, device=device),
@@ -31,7 +31,7 @@ for zeta in [0.4]:
     features = th.cat((im, y[..., None], x[..., None]), dim=-1).reshape(-1, 5)
 
     # For task 2 we used h 0.4 and 0.25 and 0.55
-    for h in [0.55]:
+    for h in [0.1, 0.3]:
         # The `shifted` array contains the iteration variables
         shifted = features.clone()
         # The `to_do` array contains the indices of the pixels for which the
@@ -69,4 +69,4 @@ for zeta in [0.4]:
             plt.pause(0.1)
         # Reference images were saved using this code.
         output_image = (shifted.view(M, M, 5)[..., :3].clone().cpu().numpy() * 255).clip(0, 255).astype('uint8')
-        imageio.imsave(f'./reference/{M}/zeta_{zeta:1.1f}_h_{h:.2f}.png', output_image)
+        imageio.imsave(f'./reference/{M}/zeta_{zeta:1.1f}_hh_{h:.2f}.png', output_image)
