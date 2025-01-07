@@ -40,19 +40,19 @@ def diffusion_tensor(
     S_ij_12_21 = gaussian_filter(u_xy.reshape(M, N), sigma_g)
     S_ij_22 = gaussian_filter(u_yy.reshape(M, N), sigma_g)
 
-    J = np.stack((S_ij_11, S_ij_12_21,
+    S = np.stack((S_ij_11, S_ij_12_21,
                   S_ij_12_21, S_ij_22), axis=-1).reshape((M, N, 2, 2))
 
-    mu1 = np.zeros_like(S_ij_11)
-    mu2 = np.zeros_like(S_ij_11)
-    v1x = np.zeros_like(S_ij_11)
-    v1y = np.zeros_like(S_ij_11)
-    v2x = np.zeros_like(S_ij_11)
-    v2y = np.zeros_like(S_ij_11)
+    mu1 = np.zeros((M, N), dtype="float64")
+    mu2 = np.zeros((M, N), dtype="float64")
+    v1x = np.zeros((M, N), dtype="float64")
+    v1y = np.zeros((M, N), dtype="float64")
+    v2x = np.zeros((M, N), dtype="float64")
+    v2y = np.zeros((M, N), dtype="float64")
 
     for i in range(M):
         for j in range(N):
-            eigvals, eigvecs = np.linalg.eig(J[i, j])
+            eigvals, eigvecs = np.linalg.eig(S[i, j])
 
             idx = np.argsort(eigvals)
             eigvals = eigvals[idx]
