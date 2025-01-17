@@ -20,10 +20,15 @@ def diffusion_tensor(
     # Keep in mind which operations require a flattened image, and which don't
 
     M, N = u.shape
+    mu1 = np.zeros((M, N), dtype="float64")
+    mu2 = np.zeros((M, N), dtype="float64")
+    v1x = np.zeros((M, N), dtype="float64")
+    v1y = np.zeros((M, N), dtype="float64")
+    v2x = np.zeros((M, N), dtype="float64")
+    v2y = np.zeros((M, N), dtype="float64")
 
     nabla_x = math_tools.spnabla_x_hp(M, N)
     nabla_y = math_tools.spnabla_y_hp(M, N)
-
     u_x = nabla_x @ u.flatten()
     u_y = nabla_y @ u.flatten()
 
@@ -43,26 +48,19 @@ def diffusion_tensor(
     S = np.stack((S_ij_11, S_ij_12_21,
                   S_ij_12_21, S_ij_22), axis=-1).reshape((M, N, 2, 2))
 
-    mu1 = np.zeros((M, N), dtype="float64")
-    mu2 = np.zeros((M, N), dtype="float64")
-    v1x = np.zeros((M, N), dtype="float64")
-    v1y = np.zeros((M, N), dtype="float64")
-    v2x = np.zeros((M, N), dtype="float64")
-    v2y = np.zeros((M, N), dtype="float64")
-
     for i in range(M):
         for j in range(N):
-            eigvals, eigvecs = np.linalg.eig(S[i, j])
+            eigenvalues, eigenvector = np.linalg.eig(S[i, j])
 
-            idx = np.argsort(eigvals)
-            eigvals = eigvals[idx]
-            eigvecs = eigvecs[:, idx]
+            sorted_ids = np.argsort(eigenvalues)
+            eigenvalues = eigenvalues[sorted_ids]
+            eigenvector = eigenvector[:, sorted_ids]
 
-            mu1[i, j] = eigvals[1]
-            mu2[i, j] = eigvals[0]
+            mu1[i, j] = eigenvalues[1]
+            mu2[i, j] = eigenvalues[0]
 
-            v1x[i, j], v1y[i, j] = eigvecs[:, 1]
-            v2x[i, j], v2y[i, j] = eigvecs[:, 0]
+            v1x[i, j], v1y[i, j] = eigenvector[:, 1]
+            v2x[i, j], v2y[i, j] = eigenvector[:, 0]
 
     if mode == 'ced':
         lambda1 = alpha
@@ -85,11 +83,11 @@ def diffusion_tensor(
     diag_diffusion_tensor_2 = sp.diags(diffusion_tensor_2, format="csc")
     diag_diffusion_tensor_3 = sp.diags(diffusion_tensor_3, format="csc")
 
-    matrix = [[diag_diffusion_tensor_1, diag_diffusion_tensor_3],
+    diffusion_matrix_tmp = [[diag_diffusion_tensor_1, diag_diffusion_tensor_3],
               [diag_diffusion_tensor_3, diag_diffusion_tensor_2]]
-    matrix = sp.bmat(matrix)
+    diffusion_matrix = sp.bmat(diffusion_matrix_tmp)
 
-    return matrix
+    return diffusion_matrix
 
 
 def nonlinear_anisotropic_diffusion(

@@ -1,6 +1,5 @@
 import numpy as np
 
-# Test values
 ux = 1
 uy = 2
 
@@ -10,7 +9,6 @@ A = np.array([[ux**2, ux * uy],
 def calc_vector_manually(mu, A): 
     A = (A - mu * np.identity(2))
 
-    
     U, S, Vt = np.linalg.svd(A)
 
     v = Vt[-1]
@@ -21,15 +19,12 @@ def calc_vector_manually(mu, A):
     return v
     
 def calc_mu_manually():
-    # Compute the components of the equation
     sum_squares = ux**2 + uy**2
     product_squares = ux**2 * uy**2
     cross_term = (ux * uy)**2
 
-    # Compute the discriminant
     discriminant = sum_squares**2 - 4 * (product_squares - cross_term)
 
-    # Compute the two solutions for mu
     mu1 = (sum_squares + np.sqrt(discriminant)) / 2
     mu2 = (sum_squares - np.sqrt(discriminant)) / 2
 
@@ -47,5 +42,3 @@ v2 = calc_vector_manually(mu2, A)
 
 print("Calculated eigenvalues: ", [mu1, mu2])
 print("Calculated eigenvectors: ", [v1, v2])
-
-
