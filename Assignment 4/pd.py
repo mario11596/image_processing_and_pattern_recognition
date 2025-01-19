@@ -48,13 +48,16 @@ if __name__ == '__main__':
             '''
             Todo: Implement (16)
             '''
-            return u
+            u_updated = (u + tau * lamda * g.ravel()) / (1 + tau * lamda)
+            return u_updated
 
         def prox_sFs(p: np.ndarray) -> np.ndarray:
             '''
             Todo: Implement (17)
             '''
-            return p
+            p_reshaped = p.reshape(2, g.size) 
+            p_reshaped /= np.maximum(1.0, np.linalg.norm(p_reshaped, axis=0))  
+            return p_reshaped.ravel()
 
         denoised = pdhg(
             g.ravel(), nabla, tau, prox_tG, sigma, prox_sFs, max_iter
